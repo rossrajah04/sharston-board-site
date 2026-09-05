@@ -249,22 +249,6 @@
     </details>
   </div>
 
-  <div class="section-title">Update next week's duties</div>
-  <div class="card">
-    <div class="muted">Send next week's duty list PDFs to Claude and ask it to rebuild this site's files, then re-upload them to Cloudflare Pages.</div>
-    <details>
-      <summary>Or paste duty-list text manually</summary>
-      <div style="margin-top:10px;">
-        <textarea id="importText" rows="5" placeholder="Paste layout-preserved duty list text here (e.g. from pdftotext -layout)…"></textarea>
-        <div class="btn-row">
-          <button class="primary" id="btnImport">Parse &amp; replace this week</button>
-        </div>
-        <div class="muted" id="importMsg" style="margin-top:6px;"></div>
-        <div class="muted" style="margin-top:6px;">Note: this only updates your own browser's copy — it won't update the site for other drivers.</div>
-      </div>
-    </details>
-  </div>
-
 </div>
 <div class="toast" id="toast"></div>
 <script>
@@ -751,6 +735,10 @@ async function scheduleServerNotifications(){
       body: JSON.stringify({ playerId: oneSignalPlayerId, checkpoints: payloads }),
     });
     const data = await res.json();
+    if(!res.ok || data.error){
+      toast('Error: ' + (data.error || res.status));
+      return;
+    }
     const ids = (data.results || []).map(r=>r.id).filter(Boolean);
     localStorage.setItem('pushIds', JSON.stringify(ids));
     if(ids.length === 0 && data.results && data.results.length){
@@ -798,69 +786,6 @@ document.getElementById('btnIcs').onclick = ()=>{
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
   toast('Downloaded — open it to add alarms to your calendar');
-};
-
-// ---------- Manual text import (best-effort) ----------
-function parseDutyText(text){
-  const lines = text.split('\n');
-  const dutyLineRe = /^(\d+)\s+([a-z]+)\s+(\S+(?:\s+\S+)?)\s+([Zz]\S+)\s+(.*)$/;
-  const spellLineRe = /^\s{15,}([Zz]\S+)\s+(.*)$/;
-  const duties = [];
-  let current = null;
-
-  function parseFields(rest){
-    const toks = rest.trim().split(/\s+/);
-    const timeIdx = [];
-    toks.forEach((t,i)=>{ if(/^\d{1,2}:\d{2}$/.test(t)) timeIdx.push(i); });
-    if(timeIdx.length < 4) return null;
-    const routes = toks.slice(0, timeIdx[0]).join(' ').replace(/,$/,'');
-    const on = toks[timeIdx[0]];
-    const st = toks[timeIdx[1]];
-    const en = toks[timeIdx[2]];
-    const off = toks[timeIdx[3]];
-    const length = toks[timeIdx[3]+1] || '';
-    return { r: routes, on, st, en, off, length };
-  }
-
-  lines.forEach(line=>{
-    if(!line.trim()) return;
-    let m = dutyLineRe.exec(line);
-    if(m){
-      if(current) duties.push(current);
-      const [, dno, days, type, bus, rest] = m;
-      const f = parseFields(rest);
-      current = { d: dno, days, t: type.trim(), sp: f ? [{...f, bus}] : [] };
-      return;
-    }
-    let m2 = spellLineRe.exec(line);
-    if(m2 && current){
-      const [, bus, rest] = m2;
-      const f = parseFields(rest);
-      if(f) current.sp.push({...f, bus});
-    }
-  });
-  if(current) duties.push(current);
-  return duties;
-}
-
-document.getElementById('btnImport').onclick = async ()=>{
-  const text = document.getElementById('importText').value;
-  const msg = document.getElementById('importMsg');
-  if(!text.trim()){ msg.textContent = 'Paste some text first.'; return; }
-  try{
-    const parsed = parseDutyText(text);
-    if(!parsed.length){ msg.textContent = 'Could not find any duty rows — check the text kept its column spacing.'; return; }
-    // guess which schedule this belongs to by matching a days-letter pattern
-    let sched = 'weekday';
-    if(parsed.every(p=>p.days==='a')) sched = 'saturday';
-    else if(parsed.every(p=>p.days==='s')) sched = 'sunday';
-    WEEK_DATA[sched] = parsed;
-    msg.textContent = `Imported ${parsed.length} duties into "${sched}". Re-select your duty above if needed.`;
-    renderDutyArea();
-    updateNext();
-  }catch(e){
-    msg.textContent = 'Import failed: ' + e.message;
-  }
 };
 
 // ---------- Init ----------
