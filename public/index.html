@@ -680,13 +680,15 @@ document.getElementById('btnEnableNotify').onclick = ()=>{
 
 document.getElementById('btnTestAlert').onclick = async ()=>{
   if(!oneSignalPlayerId){ toast('Enable phone alerts first'); return; }
+  const cps = buildCheckpoints();
+  const sample = cps[0] || { label: 'Sign on', sub: 'Duty — · sample' };
   const sendAt = new Date(Date.now() + 60*1000);
   try{
     const res = await fetch(`${NOTIFY_API_BASE}/schedule-notifications`, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         playerId: oneSignalPlayerId,
-        checkpoints: [{ title: 'Test alert', body: 'This is what a real duty alert looks like', sendAfter: sendAt.toISOString() }],
+        checkpoints: [{ title: sample.label, body: sample.sub, sendAfter: sendAt.toISOString() }],
       }),
     });
     const data = await res.json();
