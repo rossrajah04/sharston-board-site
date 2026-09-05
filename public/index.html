@@ -239,15 +239,8 @@
     <div class="muted" id="notifyStatus">Checking notification support…</div>
     <div class="btn-row">
       <button class="primary" id="btnEnableNotify">Enable phone alerts</button>
-      <button id="btnIcs">Download calendar reminders (.ics)</button>
       <button id="btnTestAlert">Send test alert (1 min)</button>
     </div>
-    <details>
-      <summary>Why two options?</summary>
-      <div class="muted" style="margin-top:8px;">
-        "Enable phone alerts" delivers real push notifications — a reminder the evening before, and another 1 hour before each duty starts — even with the app fully closed. The .ics download is a no-account fallback: it adds the same alarms to your phone's own Calendar or Reminders app.
-      </div>
-    </details>
   </div>
 
 </div>
@@ -777,41 +770,6 @@ async function scheduleServerNotifications(){
     toast('Could not reach the notification server');
   }
 }
-
-// ---------- ICS export ----------
-function pad2(n){ return n.toString().padStart(2,'0'); }
-function toICSDate(d){
-  return d.getUTCFullYear() + pad2(d.getUTCMonth()+1) + pad2(d.getUTCDate()) + 'T' + pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + '00Z';
-}
-function buildICS(){
-  const cps = buildCheckpoints();
-  let ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Sharston Board//EN\r\n';
-  cps.forEach((c,idx)=>{
-    const start = c.time;
-    const end = new Date(start.getTime()+5*60000);
-    ics += 'BEGIN:VEVENT\r\n';
-    ics += 'UID:sharston-' + start.getTime() + '-' + idx + '@duty-board\r\n';
-    ics += 'DTSTAMP:' + toICSDate(new Date()) + '\r\n';
-    ics += 'DTSTART:' + toICSDate(start) + '\r\n';
-    ics += 'DTEND:' + toICSDate(end) + '\r\n';
-    ics += 'SUMMARY:' + c.label + (c.sub? ' — ' + c.sub : '') + '\r\n';
-    ics += 'BEGIN:VALARM\r\nTRIGGER:-PT15M\r\nACTION:DISPLAY\r\nDESCRIPTION:' + c.label + '\r\nEND:VALARM\r\n';
-    ics += 'END:VEVENT\r\n';
-  });
-  ics += 'END:VCALENDAR\r\n';
-  return ics;
-}
-document.getElementById('btnIcs').onclick = ()=>{
-  const cps = buildCheckpoints();
-  if(!cps.length){ toast('Set at least one duty first'); return; }
-  const blob = new Blob([buildICS()], {type:'text/calendar'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'sharston-duties.ics';
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-  toast('Downloaded — open it to add alarms to your calendar');
-};
 
 // ---------- Init ----------
 async function init(){
