@@ -240,6 +240,7 @@
     <div class="btn-row">
       <button class="primary" id="btnEnableNotify">Enable phone alerts</button>
       <button id="btnIcs">Download calendar reminders (.ics)</button>
+      <button id="btnTestAlert">Send test alert (1 hour)</button>
     </div>
     <details>
       <summary>Why two options?</summary>
@@ -675,6 +676,26 @@ document.getElementById('btnEnableNotify').onclick = ()=>{
       scheduleServerNotifications();
     }
   });
+};
+
+document.getElementById('btnTestAlert').onclick = async ()=>{
+  if(!oneSignalPlayerId){ toast('Enable phone alerts first'); return; }
+  const sendAt = new Date(Date.now() + 60*60*1000);
+  try{
+    const res = await fetch(`${NOTIFY_API_BASE}/schedule-notifications`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        playerId: oneSignalPlayerId,
+        checkpoints: [{ title: 'Test alert', body: 'This is what a real duty alert looks like', sendAfter: sendAt.toISOString() }],
+      }),
+    });
+    const data = await res.json();
+    if(!res.ok || data.error){ toast('Error: ' + (data.error || res.status)); return; }
+    const ok = (data.results||[]).some(r=>r.id);
+    toast(ok ? `Test alert booked for ${fmtClock(sendAt)}` : '0 sent: ' + JSON.stringify((data.results||[])[0]||{}).slice(0,140));
+  }catch(e){
+    toast('Could not reach the notification server');
+  }
 };
 
 function buildNightBeforeReminders(){
