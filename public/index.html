@@ -561,13 +561,13 @@ function buildCheckpoints(){
       const isCar = /^z?car/i.test(s.bus);
       const routeTxt = isCar ? 'vehicle move' : routesOf(s).join(', ');
       const boardTxt = `Board ${s.bus}${routeTxt !== 'vehicle move' ? ' · ' + routeTxt : ''}`;
-      if(i===0) cps.push({time:s.onD, label:'Sign on', sub:`Duty ${duty.d} at ${s.from} · ${fmtDowShort(dcfg.iso)}`});
-      cps.push({time:s.stD, label:'Start service', sub: boardTxt});
+      if(i===0) cps.push({time:s.onD, label:'Sign on', sub:`${s.on} · Duty ${duty.d} at ${s.from} · ${fmtDowShort(dcfg.iso)}`});
+      cps.push({time:s.stD, label:'Start service', sub: `${s.st} · ${boardTxt}`});
       if(i===breakIdx){
-        cps.push({time:s.offD, label:'Break starts', sub:`until ${spells[i+1].st}`});
-        cps.push({time:spells[i+1].stD, label:'Break ends', sub:'back on shift'});
+        cps.push({time:s.offD, label:'Break starts', sub:`${s.off} until ${spells[i+1].st}`});
+        cps.push({time:spells[i+1].stD, label:'Break ends', sub:`${spells[i+1].st} · back on shift`});
       }
-      if(i===spells.length-1) cps.push({time:s.offD, label:'Sign off', sub:`Duty ${duty.d} at ${s.to} · ${fmtDowShort(dcfg.iso)}`});
+      if(i===spells.length-1) cps.push({time:s.offD, label:'Sign off', sub:`${s.off} · Duty ${duty.d} at ${s.to} · ${fmtDowShort(dcfg.iso)}`});
     });
   });
   cps.sort((a,b)=> a.time - b.time);
@@ -604,7 +604,7 @@ function updateNext(){
   const ss = Math.floor((diffMs%60000)/1000);
 
   document.getElementById('nextLabel').textContent = next.label.toUpperCase();
-  document.getElementById('nextTitle').textContent = next.sub;
+  document.getElementById('nextTitle').textContent = next.sub.replace(/^\d{1,2}:\d{2}\s*·\s*/, '');
   document.getElementById('flapRow').innerHTML = `
     <span class="flap">${hh}</span><span class="flap-unit">hr</span>
     <span class="flap">${pad(mm)}</span><span class="flap-unit">min</span>
