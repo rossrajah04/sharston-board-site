@@ -245,7 +245,7 @@
     <details>
       <summary>Why two options?</summary>
       <div class="muted" style="margin-top:8px;">
-        "Enable phone alerts" delivers real push notifications — sign-on, break, sign-off, and a reminder the evening before — even with the app fully closed. The .ics download is a no-account fallback: it adds the same alarms to your phone's own Calendar or Reminders app.
+        "Enable phone alerts" delivers real push notifications — a reminder the evening before, and another 1 hour before each duty starts — even with the app fully closed. The .ics download is a no-account fallback: it adds the same alarms to your phone's own Calendar or Reminders app.
       </div>
     </details>
   </div>
@@ -632,9 +632,9 @@ function refreshNotifyStatus(){
   if(Notification.permission === 'denied'){
     el.textContent = 'Notifications are blocked in your browser/phone settings — use the .ics download instead.';
   } else if(oneSignalPlayerId){
-    el.textContent = 'Phone alerts are on. You\u2019ll get a push for sign-on, break, sign-off and a reminder the evening before.';
+    el.textContent = 'Phone alerts are on. You\u2019ll get a push the evening before, and 1 hour before each duty starts.';
   } else {
-    el.textContent = 'Turn on alerts to get a push for sign-on, break, sign-off, and a reminder the night before your next duty.';
+    el.textContent = 'Turn on alerts to get a push the evening before, and 1 hour before each duty starts.';
   }
 }
 
@@ -720,18 +720,20 @@ function buildNightBeforeReminders(){
 function buildPushPayloads(){
   const now = new Date();
   const payloads = [];
-  buildCheckpoints().forEach(c=>{
-    if(c.time > now){
-      payloads.push({ title: c.label, body: c.sub, sendAfter: c.time.toISOString() });
-    }
-    const fifteen = new Date(c.time.getTime() - 15*60000);
-    if(fifteen > now){
-      payloads.push({ title: `${c.label} in 15 min`, body: c.sub, sendAfter: fifteen.toISOString() });
+
+  // 1 hour before sign-on, per assigned duty day
+  buildCheckpoints().filter(c=>c.label==='Sign on').forEach(c=>{
+    const hourBefore = new Date(c.time.getTime() - 60*60000);
+    if(hourBefore > now){
+      payloads.push({ title: 'Duty in 1 hour', body: c.sub, sendAfter: hourBefore.toISOString() });
     }
   });
+
+  // Evening-before reminder
   buildNightBeforeReminders().forEach(r=>{
     if(r.time > now) payloads.push({ title: r.label, body: r.sub, sendAfter: r.time.toISOString() });
   });
+
   return payloads;
 }
 
