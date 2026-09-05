@@ -620,7 +620,7 @@ function toast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 3200);
+  setTimeout(()=>t.classList.remove('show'), 8000);
 }
 
 function refreshNotifyStatus(){
@@ -738,7 +738,13 @@ async function scheduleServerNotifications(){
     const data = await res.json();
     const ids = (data.results || []).map(r=>r.id).filter(Boolean);
     localStorage.setItem('pushIds', JSON.stringify(ids));
-    toast(`Scheduled ${ids.length} phone alerts`);
+    if(ids.length === 0 && data.results && data.results.length){
+      const firstFail = data.results.find(r=>!r.ok) || data.results[0];
+      const raw = firstFail && firstFail.raw ? JSON.stringify(firstFail.raw) : (firstFail && firstFail.error) || 'unknown';
+      toast('0 sent: ' + raw.slice(0,140));
+    } else {
+      toast(`Scheduled ${ids.length} phone alerts`);
+    }
   }catch(e){
     toast('Could not reach the notification server');
   }
