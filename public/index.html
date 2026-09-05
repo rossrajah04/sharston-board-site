@@ -461,11 +461,16 @@ function renderDutyArea(){
   const options = dutiesForDate(dcfg).slice().sort((a,b)=> a.sp[0].on.localeCompare(b.sp[0].on, undefined, {numeric:true}));
   const currentAssigned = assignments[dcfg.iso] || '';
 
+  function optionsHtml(list){
+    return `<option value="">— choose duty number —</option>` +
+      list.map(o=>`<option value="${o.d}" ${o.d===currentAssigned?'selected':''}>Duty ${o.d} · ${o.t} · signs on ${o.sp[0].on}</option>`).join('');
+  }
+
   const pickerHtml = `<div class="card">
     <label>My duty — ${fmtDowShort(dcfg.iso)}</label>
+    <input type="text" id="dutySearch" placeholder="Search duty number…" autocomplete="off" style="margin-bottom:8px;">
     <select id="dutySelect">
-      <option value="">— choose duty number —</option>
-      ${options.map(o=>`<option value="${o.d}" ${o.d===currentAssigned?'selected':''}>Duty ${o.d} · ${o.t} · signs on ${o.sp[0].on}</option>`).join('')}
+      ${optionsHtml(options)}
     </select>
   </div>`;
 
@@ -478,6 +483,11 @@ function renderDutyArea(){
       renderDutyArea();
       scheduleServerNotifications();
       updateNext();
+    };
+    document.getElementById('dutySearch').oninput = (e)=>{
+      const q = e.target.value.trim().toLowerCase();
+      const filtered = q ? options.filter(o => o.d.toLowerCase().includes(q)) : options;
+      document.getElementById('dutySelect').innerHTML = optionsHtml(filtered);
     };
   }
 
