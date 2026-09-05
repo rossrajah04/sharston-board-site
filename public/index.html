@@ -277,6 +277,11 @@ function dateConfig(iso){
 function toLocalIso(d){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
+function fmtTime(raw){
+  let [h,m] = raw.split(':').map(Number);
+  h = ((h % 24) + 24) % 24;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
 function isoAdd(iso, days){
   const d = new Date(iso + 'T00:00:00');
   d.setDate(d.getDate() + days);
@@ -336,7 +341,7 @@ function analyzeDuty(iso, duty){
   // find largest gap between spell[i].offD and spell[i+1].onD -> that's the break
   let breakIdx = -1, maxGap = -1;
   for(let i=0;i<spells.length-1;i++){
-    const gap = spells[i+1].onD - spells[i].offD;
+    const gap = spells[i+1].onD - spells[i].enD;
     if(gap > maxGap){ maxGap = gap; breakIdx = i; }
   }
   return { spells, breakIdx, breakMs: maxGap };
@@ -443,7 +448,7 @@ function renderDutyArea(){
 
   function optionsHtml(list){
     return `<option value="">— choose duty number —</option>` +
-      list.map(o=>`<option value="${o.d}" ${o.d===currentAssigned?'selected':''}>Duty ${o.d} · ${o.t} · signs on ${o.sp[0].on}</option>`).join('');
+      list.map(o=>`<option value="${o.d}" ${o.d===currentAssigned?'selected':''}>Duty ${o.d} · ${o.t} · signs on ${fmtTime(o.sp[0].on)}</option>`).join('');
   }
 
   const pickerHtml = `<div class="card">
@@ -491,41 +496,42 @@ function renderDutyArea(){
   spells.forEach((s, i)=>{
     const isCar = /^z?car/i.test(s.bus);
     const routes = routesOf(s);
-    const active = now >= s.onD && now <= s.offD;
-    const done = now > s.offD;
+    const spellEndD = (i===spells.length-1) ? s.offD : s.enD;
+    const active = now >= s.onD && now <= spellEndD;
+    const done = now > spellEndD;
     items += `<div class="tl-item ${active?'active':''} ${done?'done':''}">
       <div class="tl-dot"></div>
       <div class="tl-label">${i===0?'Sign on &amp; start':'Start'}</div>
       ${i===0
-        ? `<div class="tl-time"><b>${s.on}</b> sign on at <b>SH</b></div>
-           <div class="tl-time"><b>${s.st}</b> start at <b>${s.from}</b></div>`
-        : `<div class="tl-time"><b>${s.st}</b> start at <b>${s.from}</b></div>`}
+        ? `<div class="tl-time"><b>${fmtTime(s.on)}</b> sign on at <b>SH</b></div>
+           <div class="tl-time"><b>${fmtTime(s.st)}</b> start at <b>${s.from}</b></div>`
+        : `<div class="tl-time"><b>${fmtTime(s.st)}</b> start at <b>${s.from}</b></div>`}
       <div class="tl-body">
         <div class="board-tag">Board <b>${s.bus}</b></div>
         ${isCar ? `<span class="move-pill">Vehicle move</span>` : `<div class="routes">${routes.map(r=>`<span class="route-pill">${r}</span>`).join('')}</div>`}
       </div>
       ${i===spells.length-1
-        ? `<div class="tl-time" style="margin-top:6px;"><b>${s.en}</b> arrive at <b>${s.to}</b> &nbsp;→&nbsp; <b>${s.off}</b> sign off</div>`
-        : `<div class="tl-time" style="margin-top:6px;"><b>${s.off}</b> sign off at <b>${s.to}</b></div>`}
+        ? `<div class="tl-time" style="margin-top:6px;"><b>${fmtTime(s.en)}</b> arrive at <b>${s.to}</b> &nbsp;→&nbsp; <b>${fmtTime(s.off)}</b> sign off</div>`
+        : `<div class="tl-time" style="margin-top:6px;"><b>${fmtTime(s.en)}</b> finish at <b>${s.to}</b></div>`}
     </div>`;
 
     if(i === breakIdx){
-      const brActive = now >= s.offD && now <= spells[i+1].stD;
+      const brActive = now >= s.enD && now <= spells[i+1].stD;
       const brDone = now > spells[i+1].stD;
-      const mins = Math.round((spells[i+1].stD - s.offD)/60000);
+      const mins = Math.round((spells[i+1].stD - s.enD)/60000);
       items += `<div class="tl-item brk ${brActive?'active':''} ${brDone?'done':''}">
         <div class="tl-dot"></div>
         <div class="tl-label">Break</div>
-        <div class="tl-time"><b>${s.off}</b> – <b>${spells[i+1].st}</b> &nbsp;<span class="muted">(${mins} min)</span></div>
+        <div class="tl-time"><b>${fmtTime(s.en)}</b> – <b>${fmtTime(spells[i+1].st)}</b> &nbsp;<span class="muted">(${mins} min)</span></div>
       </div>`;
     } else if(i < spells.length-1){
       // short changeover / positioning gap, not the main break
-      const gapMin = Math.round((spells[i+1].onD - s.offD)/60000);
+      const gapMin = Math.round((spells[i+1].onD - s.enD)/60000);
       if(gapMin > 0){
         items += `<div class="tl-item">
           <div class="tl-dot"></div>
           <div class="tl-label">Changeover</div>
-          <div class="tl-time"><b>${s.off}</b> – <b>${spells[i+1].on}</b> <span class="muted">(${gapMin} min)</span></div>
+          <div class="tl-time"><b>${fmtTime(s.en)}</b> – <b>${fmtTime(spells[i+1].on)}</b> <span class="muted">(${gapMin} min)</span></div>
         </div>`;
       }
     }
@@ -556,13 +562,13 @@ function buildCheckpoints(){
       const isCar = /^z?car/i.test(s.bus);
       const routeTxt = isCar ? 'vehicle move' : routesOf(s).join(', ');
       const boardTxt = `Board ${s.bus}${routeTxt !== 'vehicle move' ? ' · ' + routeTxt : ''}`;
-      if(i===0) cps.push({time:s.onD, label:'Sign on', sub:`${s.on} · Duty ${duty.d} at ${s.from} · ${fmtDowShort(dcfg.iso)}`});
-      cps.push({time:s.stD, label:'Start service', sub: `${s.st} · ${boardTxt}`});
+      if(i===0) cps.push({time:s.onD, label:'Sign on', sub:`${fmtTime(s.on)} · Duty ${duty.d} at ${s.from} · ${fmtDowShort(dcfg.iso)}`});
+      cps.push({time:s.stD, label:'Start service', sub: `${fmtTime(s.st)} · ${boardTxt}`});
       if(i===breakIdx){
-        cps.push({time:s.offD, label:'Break starts', sub:`${s.off} until ${spells[i+1].st}`});
+        cps.push({time:s.enD, label:'Break starts', sub:`${fmtTime(s.en)} until ${fmtTime(spells[i+1].st)}`});
         cps.push({time:spells[i+1].stD, label:'Break ends', sub:`${spells[i+1].st} · back on shift`});
       }
-      if(i===spells.length-1) cps.push({time:s.offD, label:'Sign off', sub:`${s.off} · Duty ${duty.d} at ${s.to} · ${fmtDowShort(dcfg.iso)}`});
+      if(i===spells.length-1) cps.push({time:s.offD, label:'Sign off', sub:`${fmtTime(s.off)} · Duty ${duty.d} at ${s.to} · ${fmtDowShort(dcfg.iso)}`});
     });
   });
   cps.sort((a,b)=> a.time - b.time);
@@ -707,7 +713,7 @@ function buildNightBeforeReminders(){
     const reminder = new Date(signOn);
     reminder.setDate(reminder.getDate()-1);
     reminder.setHours(20,0,0,0); // 8pm the evening before
-    out.push({ time: reminder, label: 'Duty tomorrow', sub: `Duty ${duty.d} \u00b7 signs on ${duty.sp[0].on}` });
+    out.push({ time: reminder, label: 'Duty tomorrow', sub: `Duty ${duty.d} \u00b7 signs on ${fmtTime(duty.sp[0].on)}` });
   });
   return out;
 }
