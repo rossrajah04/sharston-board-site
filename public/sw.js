@@ -1,5 +1,5 @@
-const CACHE = 'sharston-board-v1';
-const SHELL = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'sharston-board-v2';
+const SHELL = ['/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
@@ -15,8 +15,16 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// Network-first: always try to fetch the latest version.
+// Only fall back to a cached copy if the network request fails (offline).
 self.addEventListener('fetch', (e) => {
   e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request))
+    fetch(e.request)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
