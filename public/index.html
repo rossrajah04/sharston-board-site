@@ -727,7 +727,7 @@ function buildICS(){
     if(!duty) return;
     const signOn = parseTimeOnDate(iso, duty.sp[0].on);
     if(signOn <= now) return;
-    const end = new Date(signOn.getTime() + 5*60000);
+    const end = signOn;
     ics += 'BEGIN:VEVENT\r\n';
     ics += 'UID:sharston-signon-' + iso + '@duty-board\r\n';
     ics += 'DTSTAMP:' + toICSDate(new Date()) + '\r\n';
