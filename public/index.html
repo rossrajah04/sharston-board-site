@@ -495,7 +495,7 @@ function renderDutyArea(){
     return;
   }
 
-  const { spells, breakIdx } = analyzeDuty(dcfg.iso, duty);
+  const { spells, breakIdx, breakMs } = analyzeDuty(dcfg.iso, duty);
   const now = new Date();
 
   let items = '';
@@ -505,17 +505,14 @@ function renderDutyArea(){
     const spellEndD = (i===spells.length-1) ? s.offD : s.enD;
     const active = now >= s.onD && now <= spellEndD;
     const done = now > spellEndD;
-    const showResign = i===breakIdx+1 && duty.t==='SPLIT' && s.on !== s.st;
+    const showResign = i===breakIdx+1 && breakMs >= 120*60000 && s.on !== s.st;
     items += `<div class="tl-item ${active?'active':''} ${done?'done':''}">
       <div class="tl-dot"></div>
       <div class="tl-label">${i===0 || showResign ?'Sign on &amp; start':'Start'}</div>
-      ${i===0
+      ${i===0 || showResign
         ? `<div class="tl-time"><b>${fmtTime(s.on)}</b> sign on at <b>SH</b></div>
            <div class="tl-time"><b>${fmtTime(s.st)}</b> start at <b>${s.from}</b></div>`
-        : (showResign
-            ? `<div class="tl-time"><b>${fmtTime(s.on)}</b> sign on at <b>SH</b></div>
-               <div class="tl-time"><b>${fmtTime(s.st)}</b> start at <b>${s.from}</b></div>`
-            : `<div class="tl-time"><b>${fmtTime(s.st)}</b> start at <b>${s.from}</b></div>`)}
+        : `<div class="tl-time"><b>${fmtTime(s.st)}</b> start at <b>${s.from}</b></div>`}
       <div class="tl-body">
         <div class="board-tag">Board <b>${s.bus}</b> <span class="muted">(${fmtDuration(s.stD, s.enD)})</span></div>
         ${isCar ? `<span class="move-pill">Vehicle move</span>` : `<div class="routes">${routes.map(r=>`<span class="route-pill">${r}</span>`).join('')}</div>`}
@@ -570,13 +567,13 @@ function buildCheckpoints(){
     if(!dutyNo) return;
     const duty = findDuty(dcfg, dutyNo);
     if(!duty) return;
-    const { spells, breakIdx } = analyzeDuty(dcfg.iso, duty);
+    const { spells, breakIdx, breakMs } = analyzeDuty(dcfg.iso, duty);
     spells.forEach((s,i)=>{
       const isCar = /^z?car/i.test(s.bus);
       const routeTxt = isCar ? 'vehicle move' : routesOf(s).join(', ');
       const boardTxt = `Board ${s.bus}${routeTxt !== 'vehicle move' ? ' · ' + routeTxt : ''}`;
       if(i===0) cps.push({time:s.onD, label:'Sign on', sub:`${fmtTime(s.on)} · Duty ${duty.d} at ${s.from} · ${fmtDowShort(dcfg.iso)}`, displaySub:`Duty ${duty.d} · ${fmtDowShort(dcfg.iso)}`});
-      else if(i===breakIdx+1 && duty.t==='SPLIT' && s.on !== s.st) cps.push({time:s.onD, label:'Sign on', sub:`${fmtTime(s.on)} · Duty ${duty.d} at SH · ${fmtDowShort(dcfg.iso)}`, displaySub:`Duty ${duty.d} · ${fmtDowShort(dcfg.iso)}`});
+      else if(i===breakIdx+1 && breakMs >= 120*60000 && s.on !== s.st) cps.push({time:s.onD, label:'Sign on', sub:`${fmtTime(s.on)} · Duty ${duty.d} at SH · ${fmtDowShort(dcfg.iso)}`, displaySub:`Duty ${duty.d} · ${fmtDowShort(dcfg.iso)}`});
       cps.push({time:s.stD, label:'Start service', sub: `${fmtTime(s.st)} · ${boardTxt}`});
       if(i===breakIdx){
         cps.push({time:s.enD, label:'Break starts', sub:`${fmtTime(s.en)} until ${fmtTime(spells[i+1].st)}`});
