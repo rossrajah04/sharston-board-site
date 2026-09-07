@@ -239,7 +239,6 @@
     <div class="muted" id="notifyStatus">Checking notification support…</div>
     <div class="btn-row">
       <button class="primary" id="btnEnableNotify">Enable phone alerts</button>
-      <button id="btnTestAlert">Send test alert (1 min)</button>
       <button id="btnIcs">Download sign-on reminders (.ics)</button>
     </div>
   </div>
@@ -691,27 +690,6 @@ document.getElementById('btnEnableNotify').onclick = ()=>{
   });
 };
 
-document.getElementById('btnTestAlert').onclick = async ()=>{
-  if(!oneSignalPlayerId){ toast('Enable phone alerts first'); return; }
-  const cps = buildCheckpoints();
-  const sample = cps[0] || { label: 'Sign on', sub: 'Duty — · sample' };
-  const sendAt = new Date(Date.now() + 60*1000);
-  try{
-    const res = await fetch(`${NOTIFY_API_BASE}/schedule-notifications`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        playerId: oneSignalPlayerId,
-        checkpoints: [{ title: sample.label, body: sample.sub, sendAfter: sendAt.toISOString() }],
-      }),
-    });
-    const data = await res.json();
-    if(!res.ok || data.error){ toast('Error: ' + (data.error || res.status)); return; }
-    const ok = (data.results||[]).some(r=>r.id);
-    toast(ok ? `Test alert booked for ${fmtClock(sendAt)}` : '0 sent: ' + JSON.stringify((data.results||[])[0]||{}).slice(0,140));
-  }catch(e){
-    toast('Could not reach the notification server');
-  }
-};
 
 function pad2(n){ return n.toString().padStart(2,'0'); }
 function toICSDate(d){
