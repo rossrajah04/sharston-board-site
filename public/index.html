@@ -638,7 +638,7 @@ function toast(msg){
 function refreshNotifyStatus(){
   const el = document.getElementById('notifyStatus');
   if(!('Notification' in window)){
-    el.textContent = 'This browser does not support push notifications — use the .ics download instead.';
+    el.textContent = 'To get phone alerts, add to Home Screen \u2014 tap Share \u2192 Add to Home Screen, then open from there. Or download to your calendar below.';
     return;
   }
   if(Notification.permission === 'denied'){
