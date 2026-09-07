@@ -637,16 +637,20 @@ function toast(msg){
 
 function refreshNotifyStatus(){
   const el = document.getElementById('notifyStatus');
+  const btn = document.getElementById('btnEnableNotify');
   if(!('Notification' in window)){
     el.textContent = 'To get phone alerts, add to Home Screen \u2014 tap Share \u2192 Add to Home Screen, then open from there. Or download to your calendar below.';
     return;
   }
   if(Notification.permission === 'denied'){
     el.textContent = 'Notifications are blocked in your browser/phone settings — use the .ics download instead.';
+    btn.textContent = 'Enable phone alerts';
   } else if(oneSignalPlayerId){
     el.textContent = 'Phone alerts are on. You\u2019ll get a push the evening before, and 1 hour before each duty starts. Push isn\u2019t always 100% reliable on iPhone \u2014 the calendar download below is a more dependable backup.';
+    btn.textContent = 'Phone alerts enabled';
   } else {
     el.textContent = 'Turn on alerts to get a push the evening before, and 1 hour before each duty starts.';
+    btn.textContent = 'Enable phone alerts';
   }
 }
 
