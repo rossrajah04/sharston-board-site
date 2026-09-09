@@ -693,16 +693,18 @@ OneSignalDeferred.push(async function(OneSignal){
   }
   OneSignal.User.PushSubscription.addEventListener('change', (e)=>{
     if(e.current && e.current.id){
+      const isNew = e.current.id !== oneSignalPlayerId;
       oneSignalPlayerId = e.current.id;
       localStorage.setItem('oneSignalPlayerId', oneSignalPlayerId);
       refreshNotifyStatus();
-      scheduleServerNotifications();
+      if(isNew) scheduleServerNotifications();
     }
   });
   refreshNotifyStatus();
 });
 
 document.getElementById('btnEnableNotify').onclick = ()=>{
+  if(oneSignalPlayerId){ toast('Phone alerts are already on'); return; }
   if(ONESIGNAL_APP_ID === 'YOUR_ONESIGNAL_APP_ID'){
     toast('This deployment needs a OneSignal App ID set up first');
     return;
