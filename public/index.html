@@ -154,6 +154,14 @@
   .board-page-dots span{ width:6px; height:6px; border-radius:50%; background:var(--border); transition:background .2s; }
   .board-page-dots span.active{ background:var(--amber); box-shadow:0 0 8px var(--amber-glow); }
 
+  .quick-board-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:8px 18px; border-radius:999px; border:1px solid var(--amber-dim);
+    background:transparent; color:var(--amber); font-family:'Space Mono',monospace;
+    font-weight:700; font-size:13px; letter-spacing:.03em; margin:0 6px 6px 0; cursor:pointer;
+  }
+  .quick-board-btn:active{ background:var(--amber); color:#1a1200; }
+
   .day-tabs{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:10px; -ms-overflow-style:none; scrollbar-width:none;}
   .cal-header{ display:flex; align-items:center; justify-content:space-between; margin:0 4px 10px; flex-wrap:wrap; gap:8px; }
   .seg-group{ display:flex; gap:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:3px; }
@@ -261,7 +269,7 @@
   <div class="card">
     <label>Running board number</label>
     <input type="text" id="boardSearchInput" placeholder="e.g. Z101" autocomplete="off" autocapitalize="characters">
-    <div class="muted" style="font-size:11px;margin-top:8px;">Try any board number, e.g. Z101, Z150, Z301</div>
+    <div id="quickBoardBtns" style="margin-top:10px;"></div>
   </div>
   <div id="boardResults"></div>
 
@@ -473,7 +481,7 @@ document.getElementById('calNext').onclick = ()=>{
 function renderDutyArea(){
   const el = document.getElementById('dutyArea');
   const dcfg = selectedIso ? dateConfig(selectedIso) : null;
-  if(!dcfg){ el.innerHTML=''; return; }
+  if(!dcfg){ el.innerHTML=''; refreshQuickBoardBtns(null); return; }
   const options = dutiesForDate(dcfg).slice().sort((a,b)=> a.sp[0].on.localeCompare(b.sp[0].on, undefined, {numeric:true}));
   const currentAssigned = assignments[dcfg.iso] || '';
 
@@ -510,6 +518,7 @@ function renderDutyArea(){
   if(!currentAssigned){
     el.innerHTML = pickerHtml + `<div class="card empty"><div class="big">🚌</div>No duty set for this day yet.<br>Pick your duty number above.</div>`;
     attachSelectHandler();
+    refreshQuickBoardBtns(null);
     return;
   }
 
@@ -517,6 +526,7 @@ function renderDutyArea(){
   if(!duty){
     el.innerHTML = pickerHtml + `<div class="card empty">That duty number isn't in the loaded duty list — pick again.</div>`;
     attachSelectHandler();
+    refreshQuickBoardBtns(null);
     return;
   }
 
@@ -580,6 +590,7 @@ function renderDutyArea(){
     <div class="timeline">${items}</div>
   </div>`;
   attachSelectHandler();
+  refreshQuickBoardBtns(duty);
 }
 
 // ---------- Next-up hero ----------
@@ -840,6 +851,33 @@ async function scheduleServerNotifications(){
 
 // ---------- Running board search ----------
 function boardNumber(b){ return b.replace(/^Z/i, ''); }
+
+function realBoardsForDuty(duty){
+  const boards = [];
+  duty.sp.forEach(s=>{
+    if(!/^z?car/i.test(s.bus) && !boards.includes(s.bus)){
+      boards.push(s.bus);
+    }
+  });
+  return boards;
+}
+
+function refreshQuickBoardBtns(duty){
+  const el = document.getElementById('quickBoardBtns');
+  if(!el) return;
+  if(!duty){ el.innerHTML = ''; return; }
+  const boards = realBoardsForDuty(duty);
+  if(!boards.length){ el.innerHTML = ''; return; }
+  el.innerHTML = boards.map(b =>
+    `<button type="button" class="quick-board-btn" data-board="${b}">${b}</button>`
+  ).join('');
+  el.querySelectorAll('.quick-board-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.getElementById('boardSearchInput').value = btn.dataset.board;
+      renderBoardResults();
+    };
+  });
+}
 
 const atlasCache = {};
 function loadAtlas(name){
