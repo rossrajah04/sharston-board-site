@@ -169,12 +169,12 @@
   .board-lightbox.open{ display:flex; }
   .board-lightbox img{ max-width:100%; max-height:100%; object-fit:contain; touch-action:pinch-zoom; }
   .board-lightbox-close{
-    position:fixed; top:16px; right:16px; width:38px; height:38px; border-radius:50%;
+    position:absolute; top:16px; right:16px; width:38px; height:38px; border-radius:50%;
     background:rgba(255,255,255,.12); color:#fff; border:none; font-size:20px;
     display:flex; align-items:center; justify-content:center; z-index:1001;
   }
   .board-lightbox-nav{
-    position:fixed; bottom:20px; left:0; right:0; display:flex; justify-content:center; gap:8px; z-index:1001;
+    position:absolute; bottom:20px; left:0; right:0; display:flex; justify-content:center; gap:8px; z-index:1001;
   }
   .board-lightbox-nav span{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.3); }
   .board-lightbox-nav span.active{ background:var(--amber); }
@@ -1011,21 +1011,22 @@ async function showLightboxPage(){
   document.querySelectorAll('#boardLightboxNav span').forEach((dot,i)=> dot.classList.toggle('active', i===lightboxIdx));
 }
 
-const ORIGINAL_VIEWPORT_CONTENT = document.querySelector('meta[name=viewport]')?.getAttribute('content');
-
-function resetPageZoom(){
-  // If the user has pinch-zoomed the whole page, iOS Safari can leave
-  // position:fixed elements (like the lightbox and its close button)
-  // stranded outside the zoomed-in view. Forcing the viewport back to
-  // 1.0 here guarantees the lightbox always opens clean and reachable.
-  const viewport = document.querySelector('meta[name=viewport]');
-  if(!viewport || !ORIGINAL_VIEWPORT_CONTENT) return;
-  viewport.setAttribute('content', ORIGINAL_VIEWPORT_CONTENT + ', maximum-scale=1.0');
-  setTimeout(() => viewport.setAttribute('content', ORIGINAL_VIEWPORT_CONTENT), 60);
+function positionLightboxToVisualViewport(){
+  // iOS Safari can leave position:fixed elements stranded outside what's
+  // actually visible once the page has been pinch-zoomed. The Visual
+  // Viewport API reports exactly what's currently on screen (even mid-zoom),
+  // so we pin the lightbox to that directly instead of trusting CSS fixed
+  // positioning alone — this is what keeps the close button reachable.
+  const vv = window.visualViewport;
+  const lightbox = document.getElementById('boardLightbox');
+  if(!vv || !lightbox) return;
+  lightbox.style.left = vv.offsetLeft + 'px';
+  lightbox.style.top = vv.offsetTop + 'px';
+  lightbox.style.width = vv.width + 'px';
+  lightbox.style.height = vv.height + 'px';
 }
 
 function openBoardLightbox(entries, startIdx){
-  resetPageZoom();
   lightboxEntries = entries;
   lightboxIdx = startIdx;
   const nav = document.getElementById('boardLightboxNav');
@@ -1033,11 +1034,20 @@ function openBoardLightbox(entries, startIdx){
   showLightboxPage();
   document.getElementById('boardLightbox').classList.add('open');
   document.body.style.overflow = 'hidden';
+  positionLightboxToVisualViewport();
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', positionLightboxToVisualViewport);
+    window.visualViewport.addEventListener('scroll', positionLightboxToVisualViewport);
+  }
 }
 
 function closeBoardLightbox(){
   document.getElementById('boardLightbox').classList.remove('open');
   document.body.style.overflow = '';
+  if(window.visualViewport){
+    window.visualViewport.removeEventListener('resize', positionLightboxToVisualViewport);
+    window.visualViewport.removeEventListener('scroll', positionLightboxToVisualViewport);
+  }
 }
 document.getElementById('boardLightboxClose').onclick = closeBoardLightbox;
 document.getElementById('boardLightbox').addEventListener('click', (e)=>{
