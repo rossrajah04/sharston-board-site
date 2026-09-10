@@ -581,13 +581,17 @@ function renderDutyArea(){
     </div>`;
 
     if(i === breakIdx){
-      const brActive = now >= s.enD && now <= spells[i+1].stD;
-      const brDone = now > spells[i+1].stD;
-      const mins = Math.round((spells[i+1].stD - s.enD)/60000);
+      const nextSpell = spells[i+1];
+      const hasResign = breakMs >= 120*60000 && nextSpell.on !== nextSpell.st;
+      const breakEndD = hasResign ? nextSpell.onD : nextSpell.stD;
+      const breakEndTime = hasResign ? nextSpell.on : nextSpell.st;
+      const brActive = now >= s.enD && now <= breakEndD;
+      const brDone = now > breakEndD;
+      const mins = Math.round((breakEndD - s.enD)/60000);
       items += `<div class="tl-item brk ${brActive?'active':''} ${brDone?'done':''}">
         <div class="tl-dot"></div>
         <div class="tl-label">Break</div>
-        <div class="tl-time"><b>${fmtTime(s.en)}</b> – <b>${fmtTime(spells[i+1].st)}</b> &nbsp;<span class="muted">(${mins} min)</span></div>
+        <div class="tl-time"><b>${fmtTime(s.en)}</b> – <b>${fmtTime(breakEndTime)}</b> &nbsp;<span class="muted">(${mins} min)</span></div>
       </div>`;
     } else if(i < spells.length-1){
       // short changeover / positioning gap, not the main break
@@ -635,8 +639,12 @@ function buildCheckpoints(){
       else if(i===breakIdx+1 && breakMs >= 120*60000 && s.on !== s.st) cps.push({time:s.onD, label:'Sign on', sub:`${fmtTime(s.on)} · Duty ${duty.d} at SH · ${fmtDowShort(dcfg.iso)}`, displaySub:`Duty ${duty.d} · ${fmtDowShort(dcfg.iso)}`});
       cps.push({time:s.stD, label:'Start service', sub: `${fmtTime(s.st)} · ${boardTxt}`});
       if(i===breakIdx){
-        cps.push({time:s.enD, label:'Break starts', sub:`${fmtTime(s.en)} until ${fmtTime(spells[i+1].st)}`});
-        cps.push({time:spells[i+1].stD, label:'Break ends', sub:`${spells[i+1].st} · back on shift`});
+        const nextSpell = spells[i+1];
+        const hasResign = breakMs >= 120*60000 && nextSpell.on !== nextSpell.st;
+        const breakEndD = hasResign ? nextSpell.onD : nextSpell.stD;
+        const breakEndTime = hasResign ? nextSpell.on : nextSpell.st;
+        cps.push({time:s.enD, label:'Break starts', sub:`${fmtTime(s.en)} until ${fmtTime(breakEndTime)}`});
+        cps.push({time:breakEndD, label:'Break ends', sub:`${breakEndTime} · back on shift`});
       }
       if(i===spells.length-1) cps.push({time:s.offD, label:'Sign off', sub:`${fmtTime(s.off)} · Duty ${duty.d} at ${s.to} · ${fmtDowShort(dcfg.iso)}`, displaySub:`Duty ${duty.d} · ${fmtDowShort(dcfg.iso)}`});
     });
