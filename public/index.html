@@ -1011,7 +1011,21 @@ async function showLightboxPage(){
   document.querySelectorAll('#boardLightboxNav span').forEach((dot,i)=> dot.classList.toggle('active', i===lightboxIdx));
 }
 
+const ORIGINAL_VIEWPORT_CONTENT = document.querySelector('meta[name=viewport]')?.getAttribute('content');
+
+function resetPageZoom(){
+  // If the user has pinch-zoomed the whole page, iOS Safari can leave
+  // position:fixed elements (like the lightbox and its close button)
+  // stranded outside the zoomed-in view. Forcing the viewport back to
+  // 1.0 here guarantees the lightbox always opens clean and reachable.
+  const viewport = document.querySelector('meta[name=viewport]');
+  if(!viewport || !ORIGINAL_VIEWPORT_CONTENT) return;
+  viewport.setAttribute('content', ORIGINAL_VIEWPORT_CONTENT + ', maximum-scale=1.0');
+  setTimeout(() => viewport.setAttribute('content', ORIGINAL_VIEWPORT_CONTENT), 60);
+}
+
 function openBoardLightbox(entries, startIdx){
+  resetPageZoom();
   lightboxEntries = entries;
   lightboxIdx = startIdx;
   const nav = document.getElementById('boardLightboxNav');
