@@ -950,12 +950,32 @@ function renderBoardResults(){
   const allBoards = Object.keys(BOARD_MAP);
   const exact = allBoards.find(b => boardNumber(b) === qNum);
   const partial = allBoards.filter(b => b.includes(q) || boardNumber(b).includes(qNum));
-  if(!exact && partial.length === 0){
+
+  let board;
+  if(exact){
+    board = exact;
+  } else if(partial.length === 0){
     el.innerHTML = `<div class="card empty">No board found matching "${q}"</div>`;
     return;
+  } else if(partial.length === 1){
+    board = partial[0];
+  } else if(partial.length <= 10){
+    // A few possibilities — let the driver pick rather than silently guessing.
+    el.innerHTML = `<div class="card">
+      <div class="muted" style="margin-bottom:10px;">Multiple boards match "${q}" — tap the one you mean:</div>
+      <div>${partial.map(b=>`<button type="button" class="quick-board-btn" data-board="${b}">${b}</button>`).join('')}</div>
+    </div>`;
+    el.querySelectorAll('.quick-board-btn').forEach(btn=>{
+      btn.onclick = ()=>{ document.getElementById('boardSearchInput').value = btn.dataset.board; renderBoardResults(); };
+    });
+    return;
+  } else {
+    // Too many matches to list sensibly — ask for more digits instead of guessing.
+    el.innerHTML = `<div class="card empty">${partial.length} boards match "${q}" — keep typing to narrow it down.</div>`;
+    return;
   }
-  const board = exact || partial[0];
-  const others = (exact ? partial.filter(b=>b!==exact) : partial.slice(1));
+
+  const others = (exact ? partial.filter(b=>b!==exact) : []);
   const entries = BOARD_MAP[board];
 
   let html = `<div class="card">
