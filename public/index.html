@@ -110,12 +110,14 @@
   .tl-item.active .tl-dot{ border-color: var(--green); box-shadow:0 0 10px var(--green); }
   .tl-item.done .tl-dot{ border-color: var(--border); background: var(--border); }
   .tl-item.brk .tl-dot{ border-color: var(--red); }
+  .tl-item.signon .tl-dot{ border-color: var(--green); }
 
   .tl-time{ font-family:'Space Mono',monospace; font-size:13px; color:var(--text-dim); }
   .tl-time b{ color:var(--text); font-size:15px; }
   .tl-body{ font-size:13px; margin-top:3px; }
   .tl-label{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim); margin-bottom:3px;}
   .tl-item.brk .tl-label{ color: var(--red); }
+  .tl-item.signon .tl-label{ color: var(--green); }
 
   .routes{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .board-tag{
@@ -564,7 +566,7 @@ function renderDutyArea(){
     const active = now >= s.onD && now <= spellEndD;
     const done = now > spellEndD;
     const showResign = i===breakIdx+1 && breakMs >= 120*60000 && s.on !== s.st;
-    items += `<div class="tl-item ${active?'active':''} ${done?'done':''}">
+    items += `<div class="tl-item signon ${active?'active':''} ${done?'done':''}">
       <div class="tl-dot"></div>
       <div class="tl-label">${i===0 || showResign ?'Sign on &amp; start':'Start'}</div>
       ${i===0 || showResign
