@@ -609,12 +609,25 @@ function renderDutyArea(){
   });
 
   const fullSpan = fmtDuration(spells[0].onD, spells[spells.length-1].offD);
+  const hasSplit = breakMs >= 120*60000;
+  let timeRangeHtml;
+  if(hasSplit){
+    const secondSpell = spells[breakIdx+1];
+    const secondHalfStart = (secondSpell.on !== secondSpell.st) ? secondSpell.on : secondSpell.st;
+    timeRangeHtml = `<div class="muted" style="margin:-4px 0 8px; font-family:'Space Mono',monospace; font-size:14px; line-height:1.6;">
+      <div>${fmtTime(spells[0].on)} \u2013 ${fmtTime(spells[breakIdx].en)}</div>
+      <div>${fmtTime(secondHalfStart)} \u2013 ${fmtTime(spells[spells.length-1].off)}</div>
+    </div>`;
+  } else {
+    timeRangeHtml = `<div class="muted" style="margin:-4px 0 8px; font-family:'Space Mono',monospace; font-size:14px;">${fmtTime(spells[0].on)} \u2013 ${fmtTime(spells[spells.length-1].off)}</div>`;
+  }
 
   el.innerHTML = pickerHtml + `<div class="card">
     <div class="duty-head">
       <div class="dnum">Duty ${duty.d}</div>
       <div class="badge type-${duty.t}">${duty.t}</div>
     </div>
+    ${timeRangeHtml}
     <div class="muted" style="margin:-4px 0 12px;">Paid: <b style="color:var(--text);">${duty.paid}</b> &nbsp;·&nbsp; Full shift: <b style="color:var(--text);">${fullSpan}</b></div>
     <div class="timeline">${items}</div>
   </div>`;
