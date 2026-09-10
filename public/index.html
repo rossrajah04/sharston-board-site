@@ -839,7 +839,7 @@ function buildPushPayloads(){
   return payloads;
 }
 
-async function scheduleServerNotifications(){
+async function scheduleServerNotificationsImpl(){
   if(!oneSignalPlayerId) return;
   if(NOTIFY_API_BASE === 'YOUR_WORKER_URL'){
     toast('Notification server not set up yet');
@@ -878,6 +878,15 @@ async function scheduleServerNotifications(){
   }catch(e){
     toast('Could not reach the notification server');
   }
+}
+
+// Ensure calls never overlap — each one waits for the previous to fully
+// finish (including its cancel step) before reading/writing pushIds.
+// This is what prevents duplicate alerts when the duty is changed rapidly.
+let notifyQueue = Promise.resolve();
+function scheduleServerNotifications(){
+  notifyQueue = notifyQueue.then(() => scheduleServerNotificationsImpl()).catch(()=>{});
+  return notifyQueue;
 }
 
 // ---------- Running board search ----------
