@@ -292,6 +292,9 @@
     </div>
   </div>
 
+  <div class="section-title">This week's pay (estimate)</div>
+  <div class="card" id="payCard"></div>
+
   <div class="muted" style="text-align:center; font-size:11px; margin-top:4px; opacity:.6;">Unofficial tool — always check your official duty sheet.</div>
 
 </div>
@@ -506,7 +509,7 @@ document.getElementById('calNext').onclick = ()=>{
 function renderDutyArea(){
   const el = document.getElementById('dutyArea');
   const dcfg = selectedIso ? dateConfig(selectedIso) : null;
-  if(!dcfg){ el.innerHTML=''; refreshQuickBoardBtns(null); return; }
+  if(!dcfg){ el.innerHTML=''; refreshQuickBoardBtns(null); renderPayCard(); return; }
   const options = dutiesForDate(dcfg).slice().sort((a,b)=> a.sp[0].on.localeCompare(b.sp[0].on, undefined, {numeric:true}));
   const currentAssigned = assignments[dcfg.iso] || '';
 
@@ -544,6 +547,7 @@ function renderDutyArea(){
     el.innerHTML = pickerHtml + `<div class="card empty"><div class="big">🚌</div>No duty set for this day yet.<br>Pick your duty number above.</div>`;
     attachSelectHandler();
     refreshQuickBoardBtns(null);
+    renderPayCard();
     return;
   }
 
@@ -552,6 +556,7 @@ function renderDutyArea(){
     el.innerHTML = pickerHtml + `<div class="card empty">That duty number isn't in the loaded duty list — pick again.</div>`;
     attachSelectHandler();
     refreshQuickBoardBtns(null);
+    renderPayCard();
     return;
   }
 
@@ -633,6 +638,7 @@ function renderDutyArea(){
   </div>`;
   attachSelectHandler();
   refreshQuickBoardBtns(duty);
+  renderPayCard();
 }
 
 // ---------- Next-up hero ----------
@@ -902,6 +908,59 @@ let notifyQueue = Promise.resolve();
 function scheduleServerNotifications(){
   notifyQueue = notifyQueue.then(() => scheduleServerNotificationsImpl()).catch(()=>{});
   return notifyQueue;
+}
+
+// ---------- Pay calculator ----------
+const PAY_RATES = {
+  weekday: 19.07, weekdayNight: 20.84,
+  weekend: 21.31, weekendNight: 22.99,
+};
+function parsePaidHours(paidStr){
+  const m = /^(\d+)h(\d+)$/.exec((paidStr||'').trim());
+  if(!m) return 0;
+  return parseInt(m[1],10) + parseInt(m[2],10)/60;
+}
+function rateFor(iso, duty){
+  const dow = new Date(iso+'T00:00:00').getDay(); // 0=Sun, 6=Sat
+  const isWeekend = (dow===0 || dow===6);
+  const isNight = duty.t === 'NIGHT';
+  if(isWeekend) return isNight ? PAY_RATES.weekendNight : PAY_RATES.weekend;
+  return isNight ? PAY_RATES.weekdayNight : PAY_RATES.weekday;
+}
+function renderPayCard(){
+  const el = document.getElementById('payCard');
+  if(!el) return;
+  const start = weekStartIso(selectedIso);
+  let total = 0;
+  const rows = [];
+  for(let i=0;i<7;i++){
+    const iso = isoAdd(start, i);
+    const dutyNo = assignments[iso];
+    if(!dutyNo) continue;
+    const dcfg = dateConfig(iso);
+    const duty = findDuty(dcfg, dutyNo);
+    if(!duty) continue;
+    const hours = parsePaidHours(duty.paid);
+    const rate = rateFor(iso, duty);
+    const pay = hours * rate;
+    total += pay;
+    rows.push({iso, dcfg, duty, hours, rate, pay});
+  }
+  if(rows.length === 0){
+    el.innerHTML = `<div class="empty">No duties entered for this week yet.</div>`;
+    return;
+  }
+  let html = `<div class="muted" style="font-size:11px; margin-bottom:8px;">${fmtDowShort(start)} \u2013 ${fmtDowShort(isoAdd(start,6))} \u00b7 pay rates only, doesn't include tax/NI</div>`;
+  rows.forEach(r=>{
+    html += `<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+      <span class="muted">${r.dcfg.dow} ${r.dcfg.dnum} \u00b7 Duty ${r.duty.d}${r.duty.t==='NIGHT'?' (night)':''}</span>
+      <span style="font-family:'Space Mono',monospace;">${r.hours.toFixed(2)}h \u00d7 £${r.rate.toFixed(2)} = <b style="color:var(--text);">£${r.pay.toFixed(2)}</b></span>
+    </div>`;
+  });
+  html += `<div style="display:flex; justify-content:space-between; padding-top:12px; font-size:16px;">
+    <b>Total</b><b style="font-family:'Space Mono',monospace; color:var(--amber);">£${total.toFixed(2)}</b>
+  </div>`;
+  el.innerHTML = html;
 }
 
 // ---------- Running board search ----------
